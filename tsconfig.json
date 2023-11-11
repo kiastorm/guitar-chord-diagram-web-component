@@ -8,6 +8,7 @@
     "resolveJsonModule": true,
     "moduleDetection": "force",
     "isolatedModules": true,
+    "types": ["vitest/globals"],
     /* Strictness */
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -59,5 +60,6 @@
      * etc.
      */
     "lib": ["es2022", "dom", "dom.iterable"]
-  }
+  },
+  "include": ["src/**/*"]
 }

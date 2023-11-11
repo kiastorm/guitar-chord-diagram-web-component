@@ -4,7 +4,7 @@ import { component, store } from "./utils/reef";
 
 const DEFAULT_STATE = {
   amountOfFrets: 4,
-  frets: [1, 1, 0, 0, 0, 0],
+  frets: [0, 0, 0, 0, 0, 0],
   fingers: [1, 1, 1, 1, 1, 1],
   barres: [],
   capo: false,
@@ -53,7 +53,7 @@ const parseIntArray = (value: string[]) => {
   return value.map((v) => parseInt(v));
 };
 
-class GuitarChordDiagram extends HTMLElement {
+export class GuitarChordDiagram extends HTMLElement {
   // Shadow DOM
   private shadow: ShadowRoot;
   private isInitialising = true;
@@ -958,6 +958,112 @@ class GuitarChordDiagram extends HTMLElement {
           break;
       }
     }
+  }
+
+  /**
+   * Convert a note name to a MIDI note number.
+   * @param {string} note - The note name (e.g., "E4").
+   * @returns {number} The MIDI note number.
+   */
+  private noteToMidi(note: string): number {
+    const notes = [
+      "C",
+      "C#",
+      "D",
+      "D#",
+      "E",
+      "F",
+      "F#",
+      "G",
+      "G#",
+      "A",
+      "A#",
+      "B",
+    ];
+    const octave = parseInt(note.slice(-1));
+    const keyNumber = notes.indexOf(note.slice(0, -1));
+
+    if (keyNumber < 0) {
+      throw new Error("Invalid note name: " + note);
+    }
+
+    // MIDI note number calculation
+    return keyNumber + 12 * (octave + 1);
+  }
+
+  /**
+   * Convert a MIDI note number to a note name, including the octave.
+   * @param {number} midi - The MIDI note number.
+   * @returns {string} The note name with octave.
+   */
+  private midiToNote(midi: number): string {
+    const notes = [
+      "C",
+      "C#",
+      "D",
+      "D#",
+      "E",
+      "F",
+      "F#",
+      "G",
+      "G#",
+      "A",
+      "A#",
+      "B",
+    ];
+    const octave = Math.floor(midi / 12) - 1;
+    const note = notes[midi % 12];
+
+    return note + octave;
+  }
+
+  /**
+   * Get the note being played on a given string, including the octave.
+   * @param {number} stringIndex - The index of the string (0-based).
+   * @param {number} fretNumber - The fret number.
+   * @returns {string} The note being played, including the octave.
+   */
+  getNote(stringIndex: number, fretNumber: number): string {
+    const playedFret = fretNumber + (this.capo ? this.baseFret - 1 : 0);
+    const baseNote = this.state.value.tuning[stringIndex];
+    const baseMidi = this.noteToMidi(baseNote);
+    const playedMidi = baseMidi + playedFret;
+
+    return this.midiToNote(playedMidi);
+  }
+
+  /**
+   * Get all notes being played in the current chord, including the octaves.
+   * @returns {string[]} Array of notes with octaves for each string.
+   */
+  getNotes(): string[] {
+    return this.state.value.frets.map(
+      (fret, index) => (fret >= 0 ? this.getNote(index, fret) : "X") // "X" represents a muted string
+    );
+  }
+
+  /**
+   * Get the MIDI note number being played on a given string.
+   * @param {number} stringIndex - The index of the string (0-based).
+   * @param {number} fretNumber - The fret number.
+   * @returns {number} The MIDI note number being played.
+   */
+  getMidiNote(stringIndex: number, fretNumber: number): number {
+    const playedFret = fretNumber + (this.capo ? this.baseFret - 1 : 0);
+    const baseNote = this.state.value.tuning[stringIndex];
+    const baseMidi = this.noteToMidi(baseNote);
+
+    return baseMidi + playedFret;
+  }
+
+  /**
+   * Get all MIDI note numbers being played in the current chord.
+   * @returns {number[]} Array of MIDI note numbers for each string.
+   */
+  getMidiNotes(): number[] {
+    return this.state.value.frets.map(
+      (fret, index) => (fret >= 0 ? this.getMidiNote(index, fret) : -1) // -1 represents a muted string
+    );
   }
 
   export(options: { format: "png" | "svg" }) {
