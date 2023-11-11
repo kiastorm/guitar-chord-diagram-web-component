@@ -4,11 +4,11 @@ import { component, store } from "./utils/reef";
 
 const DEFAULT_STATE = {
   amountOfFrets: 4,
-  frets: [0, 0, 0, 0, 0, 3],
+  frets: [1, 1, 0, 0, 0, 0],
   fingers: [1, 1, 1, 1, 1, 1],
   barres: [],
   capo: false,
-  baseFret: 1,
+  baseFret: 3,
   midi: [40, 45, 50, 55, 59, 64],
   strings: 6,
   tuning: ["E2", "A2", "D3", "G3", "B3", "E4"],
@@ -57,7 +57,9 @@ class GuitarChordDiagram extends HTMLElement {
   // Shadow DOM
   private shadow: ShadowRoot;
   private isInitialising = true;
-  private dragStart: { string: number; fret: number } | null = null;
+  private dragSession: {
+    initialUpdate: { string: number; fret: number };
+  } | null = null;
 
   // Reflective properties
 
@@ -95,6 +97,7 @@ class GuitarChordDiagram extends HTMLElement {
 
   TUNING_FONT_SIZE = 3;
   FRET_HEIGHT = 16;
+  MUTED_FRET_HEIGHT = 7;
   FRET_Y_CENTER = this.DOT_RADIUS - this.STROKE_WIDTH;
 
   fretYPosition = [
@@ -401,6 +404,9 @@ class GuitarChordDiagram extends HTMLElement {
 
     this.shadowRoot?.addEventListener("mousedown", this.handleMouseDown);
     this.shadowRoot?.addEventListener("mouseup", this.handleMouseUp);
+    this.shadowRoot?.addEventListener("keydown", (e) =>
+      this.handleDotKeydown(e)
+    );
   }
 
   static get observedAttributes() {
@@ -583,7 +589,7 @@ class GuitarChordDiagram extends HTMLElement {
     if (amountOfStrings === 6) {
       if (frets[0] === 1 || showCapo) {
         // Move over to make space for dot or capo
-        return baseFret > 9 ? -12 : -8;
+        return baseFret > 9 ? -12 : -10;
       } else {
         return baseFret > 9 ? -10 : -7;
       }
@@ -648,9 +654,9 @@ class GuitarChordDiagram extends HTMLElement {
       style="border: 1px solid #ccc;user-select: none;"
       
     >
-      <g transform="translate(${this.TRANSLATE_OFFSET}, ${
-      this.TRANSLATE_OFFSET
-    })">
+      <g class="gcd__container" transform="translate(${
+        this.TRANSLATE_OFFSET
+      }, ${this.TRANSLATE_OFFSET})">
         ${this.renderNeck()}
         ${this.renderBarre()}
         ${this.renderDot()}
@@ -826,30 +832,32 @@ class GuitarChordDiagram extends HTMLElement {
       ].sort((a, b) => a.position - b.position);
     })();
 
-    const dots = this.shadowRoot.querySelectorAll(".dot");
-    dots.forEach((dot) => {
-      dot.addEventListener("keydown", (e) => {
-        const dotIndex = Array.from(dots).indexOf(dot);
-        this.handleDotKeydown(e, dotIndex);
-      });
-    });
-
     return `
     ${allDots.map((fret) => {
       const string = this.strings - fret.position;
       const finger = this.fingers && this.fingers[fret.position];
 
-      return fret.value === -1
-        ? this.renderMuteDot(string)
-        : this.renderFretDot(fret, string, finger);
+      return `
+      <g
+        class="dot"
+        data-string="${fret.position}"
+        tabindex="0"
+      >
+        ${
+          fret.value === -1
+            ? this.renderMuteDot(string, fret)
+            : this.renderFretDot(fret, string, finger)
+        }
+      </g>`;
     })}
   `;
   };
 
-  renderMuteDot = (string: number) => `
+  renderMuteDot = (
+    string: number,
+    fret: { position: number; value: number }
+  ) => `
     <text
-      class="dot"
-      tabindex="0"
       font-size='5.3pt'
       fill='#444'
       font-family='Verdana'
@@ -866,8 +874,6 @@ class GuitarChordDiagram extends HTMLElement {
   ) => `
     <g>
       <circle
-        class="dot"
-        tabindex="0"
         stroke-width="0.25"
         stroke="#444"
         fill="${fret.value === 0 ? "transparent" : "#444"}"
@@ -876,7 +882,7 @@ class GuitarChordDiagram extends HTMLElement {
         r="${fret.value === 0 ? this.radius.open : this.radius.fret}"
       />
       ${
-        finger && finger > 0
+        finger && finger > 0 && fret.value > 0
           ? this.renderFingerNumber(fret, string, finger)
           : ""
       }
@@ -900,53 +906,168 @@ class GuitarChordDiagram extends HTMLElement {
     </text>
   `;
 
-  changeFret(dotIndex, change) {
-    // dotIndex corresponds to a string in your guitar chord diagram
-    // 'change' is either 1 (increase fret) or -1 (decrease fret)
-
-    // Calculate the new fret value
-    let newFretValue = this.frets[dotIndex] + change;
-
-    // Implement your fret range limits (e.g., 0 to amountOfFrets)
-    newFretValue = Math.max(0, Math.min(newFretValue, this.amountOfFrets));
-
-    // Update the frets array
-    const newFrets = [...this.frets];
-    newFrets[dotIndex] = newFretValue;
-
-    this.frets = newFrets;
-    console.log(newFrets);
-  }
-
   focusDot(index) {
     const dots = this.shadowRoot.querySelectorAll(".dot");
+
     if (dots[index]) {
       dots[index].focus();
     }
   }
 
-  handleDotKeydown(e, dotIndex) {
-    const key = e.key;
-    const totalDots = this.shadowRoot.querySelectorAll(".dot").length;
-    let newDotIndex;
+  changeFret(stringIndex, change) {
+    // stringIndex corresponds to a string in your guitar chord diagram
+    // 'change' is either 1 (increase fret) or -1 (decrease fret)
 
-    switch (key) {
-      case "ArrowRight":
-        newDotIndex = (dotIndex + 1) % totalDots;
-        this.focusDot(newDotIndex);
-        break;
-      case "ArrowLeft":
-        newDotIndex = (dotIndex - 1 + totalDots) % totalDots;
-        this.focusDot(newDotIndex);
-        break;
-      case "ArrowUp":
-        this.changeFret(dotIndex, -1);
-        break;
-      case "ArrowDown":
-        console.log("DOWN");
-        this.changeFret(dotIndex, 1);
-        break;
+    // Calculate the new fret value
+
+    let newFretValue = this.frets[stringIndex] + change;
+
+    // Implement your fret range limits (e.g., 0 to amountOfFrets)
+    newFretValue = Math.max(-1, Math.min(newFretValue, this.amountOfFrets));
+
+    // Update the frets array
+    const newFrets = [...this.frets];
+    newFrets[stringIndex] = newFretValue;
+
+    this.frets = newFrets;
+  }
+
+  handleDotKeydown(e) {
+    // If dot is focused
+    if (e.target.classList.contains("dot")) {
+      const key = e.key;
+      const stringIndex = parseInt(e.target.dataset.string);
+
+      const totalDots = this.strings;
+      let newStringIndexToFocus;
+
+      switch (key) {
+        case "ArrowRight":
+          newStringIndexToFocus = (stringIndex + 1) % totalDots;
+          this.focusDot(newStringIndexToFocus);
+          break;
+        case "ArrowLeft":
+          newStringIndexToFocus = (stringIndex - 1 + totalDots) % totalDots;
+          this.focusDot(newStringIndexToFocus);
+          break;
+        case "ArrowUp":
+          this.changeFret(stringIndex, -1);
+          break;
+        case "ArrowDown":
+          this.changeFret(stringIndex, 1);
+          break;
+      }
     }
+  }
+
+  export(options: { format: "png" | "svg" }) {
+    if (options.format === "png") {
+      this.exportAsPNG();
+    } else if (options.format === "svg") {
+      this.exportAsSVG();
+    }
+  }
+
+  exportAsSVG() {
+    // Get the SVG element
+    const svgElement = this.shadowRoot?.querySelector("svg");
+
+    if (svgElement) {
+      // Serialize the SVG to string
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgElement);
+
+      // Create a Blob from the SVG string
+      const blob = new Blob([svgString], { type: "image/svg+xml" });
+
+      // Create a URL for the Blob
+      const url = URL.createObjectURL(blob);
+
+      // Create a temporary anchor element to trigger download
+      const downloadLink = document.createElement("a");
+      downloadLink.href = url;
+      downloadLink.download = "guitar-chord-diagram.svg"; // Filename for the downloaded file
+
+      // Append the anchor to the body, click it, and remove it
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      // Clean up the URL
+      URL.revokeObjectURL(url);
+    } else {
+      console.error("Couldn't find SVG element.");
+    }
+  }
+
+  exportAsPNG() {
+    const svgElement = this.shadowRoot?.querySelector("svg");
+    if (!svgElement) {
+      console.error("SVG element not found.");
+      return;
+    }
+
+    // Get original dimensions of the SVG
+    const svgWidth =
+      svgElement.viewBox.baseVal.width || svgElement.width.baseVal.value;
+    const svgHeight =
+      svgElement.viewBox.baseVal.height || svgElement.height.baseVal.value;
+
+    // Serialize the SVG to string
+    const serializer = new XMLSerializer();
+    let svgString = serializer.serializeToString(svgElement);
+
+    // Scale factor for higher resolution
+    const scaleFactor = 6;
+
+    // Modify the SVG string to increase its size
+    svgString = svgString.replace(
+      /width="[^"]+"/,
+      `width="${svgWidth * scaleFactor}"`
+    );
+    svgString = svgString.replace(
+      /height="[^"]+"/,
+      `height="${svgHeight * scaleFactor}"`
+    );
+
+    // Encode the SVG string in base64
+    const svgBase64 =
+      "data:image/svg+xml;base64," +
+      btoa(unescape(encodeURIComponent(svgString)));
+
+    // Create a new image and set its source to the base64 encoded SVG
+    const img = new Image();
+    img.src = svgBase64;
+
+    // Create a canvas element with scaled dimensions
+    const canvas = document.createElement("canvas");
+    canvas.width = svgWidth * scaleFactor;
+    canvas.height = svgHeight * scaleFactor;
+    const ctx = canvas.getContext("2d");
+
+    img.onload = () => {
+      // Fill the canvas with a white background
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw the image onto the canvas
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Create a PNG URL from the canvas
+      const pngUrl = canvas.toDataURL("image/png");
+
+      // Create and trigger a download operation
+      const downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = "guitar-chord-diagram.png";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    };
+
+    img.onerror = () => {
+      console.error("Error loading the SVG image.");
+    };
   }
 
   getClosestString = (x: number) => {
@@ -977,7 +1098,7 @@ class GuitarChordDiagram extends HTMLElement {
     return fretPositions.indexOf(closestFret);
   };
 
-  handleMouseDown = (e: MouseEvent) => {
+  getClickPosition = (e: MouseEvent) => {
     const svgElement = this.shadowRoot?.querySelector("svg");
     if (!svgElement) return;
 
@@ -988,27 +1109,47 @@ class GuitarChordDiagram extends HTMLElement {
     const cursorpt = pt.matrixTransform(svgElement.getScreenCTM()?.inverse());
     const closestString = this.getClosestString(cursorpt.x);
     const closestFret = this.getClosestFret(cursorpt.y);
+    const isClickingFret =
+      cursorpt.y > this.TRANSLATE_OFFSET - this.MUTED_FRET_HEIGHT &&
+      cursorpt.y <
+        this.FRET_HEIGHT * this.amountOfFrets + this.TRANSLATE_OFFSET;
 
     const stringIndex = this.strings - closestString;
+
+    return {
+      string: stringIndex,
+      fret: isClickingFret ? closestFret : false,
+    };
+  };
+
+  handleMouseDown = (e: MouseEvent) => {
+    const over = this.getClickPosition(e);
+    if (over.fret === false) return;
 
     const newFrets = [...this.frets];
     const newBarres = new Set(this.barres);
 
     // Directly update the frets on mousedown
-    if (closestFret === 0) {
-      if (this.frets[stringIndex] === 0) {
-        newFrets[stringIndex] = -1;
+    if (over.fret === 0) {
+      if (this.frets[over.string] === 0) {
+        newFrets[over.string] = -1;
       } else {
-        newFrets[stringIndex] = 0;
+        newFrets[over.string] = 0;
       }
     } else {
-      newFrets[stringIndex] = closestFret;
+      newFrets[over.string] = over.fret;
     }
 
-    this.dragStart = {
-      string: stringIndex,
-      fret: closestFret,
-      fretValue: newFrets[stringIndex],
+    this.dragSession = {
+      startedAt: {
+        string: over.string,
+        fret: this.frets[over.string],
+      },
+      initialUpdate: {
+        string: over.string,
+        fret: over.fret,
+        fretValue: newFrets[over.string],
+      },
     };
 
     this.originalBarres = [...this.barres]; // Store the original barres State
@@ -1035,36 +1176,30 @@ class GuitarChordDiagram extends HTMLElement {
   };
 
   handleMouseMove = (e: MouseEvent) => {
-    if (!this.dragStart) return;
+    if (!this.dragSession) return;
+    const over = this.getClickPosition(e);
 
-    const svgElement = this.shadowRoot?.querySelector("svg");
-    if (!svgElement) return;
+    if (over.fret === false) return;
 
-    const pt = svgElement.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-
-    const cursorpt = pt.matrixTransform(svgElement.getScreenCTM()?.inverse());
-    const currentString = this.getClosestString(cursorpt.x);
-    const currentFret = this.dragStart.fretValue;
-
-    const startStringIndex = this.dragStart.string;
-    const currentStringIndex = this.strings - currentString;
-    const minStringIndex = Math.min(startStringIndex, currentStringIndex);
-    const maxStringIndex = Math.max(startStringIndex, currentStringIndex);
+    const startStringIndex = this.dragSession.initialUpdate.string;
+    const barreStartStingIndex = Math.min(startStringIndex, over.string);
+    const barreEndStartIndex = Math.max(startStringIndex, over.string);
 
     const newFrets = [...this.originalFrets]; // Start with the original frets
     const newBarres = new Set(this.originalBarres); // Use a set to manage unique barre values
 
     // Update frets and potentially add to barres based on drag range
-    for (let i = minStringIndex; i <= maxStringIndex; i++) {
-      newFrets[i] = currentFret;
+    for (let i = barreStartStingIndex; i <= barreEndStartIndex; i++) {
+      // When dragging, lock the frets to the initially clicked fret.
+      // We use the fret value after being updated via the `mousedown` event so that
+      // dragging along the mute/open string will work as expected.
+      newFrets[i] = this.dragSession.initialUpdate.fretValue;
       if (
-        startStringIndex !== currentStringIndex &&
-        currentFret !== -1 &&
-        currentFret !== 0
+        startStringIndex !== over.string &&
+        this.dragSession.initialUpdate.fret !== -1 &&
+        this.dragSession.initialUpdate.fret !== 0
       ) {
-        newBarres.add(currentFret);
+        newBarres.add(this.dragSession.initialUpdate.fret);
       }
     }
 
@@ -1088,10 +1223,32 @@ class GuitarChordDiagram extends HTMLElement {
     }
   };
 
+  increaseFinger = (fret: number) => {
+    const newFingers = [...this.fingers];
+    newFingers[fret] = newFingers[fret] + 1 > 4 ? 1 : newFingers[fret] + 1;
+    this.fingers = newFingers;
+  };
+
   handleMouseUp = (e: MouseEvent) => {
+    const over = this.getClickPosition(e);
+    if (over.fret === false) return;
+
+    const isClickingDot =
+      this.dragSession.initialUpdate.string === over.string &&
+      this.dragSession.initialUpdate.fret === over.fret &&
+      this.dragSession.startedAt.fret === this.frets[over.string];
+
+    const isClickingOpenOrMute =
+      this.dragSession.startedAt.fret === 0 ||
+      this.dragSession.startedAt.fret === -1;
+
+    if (isClickingDot && !isClickingOpenOrMute) {
+      this.increaseFinger(over.string);
+    }
+
     this.shadowRoot?.removeEventListener("mousemove", this.handleMouseMove);
     document.removeEventListener("mouseup", this.handleMouseUp);
-    this.dragStart = null;
+    this.dragSession = null;
     this.originalFrets = []; // Clear the original frets state
     this.originalBarres = []; // Clear the original barres state
   };

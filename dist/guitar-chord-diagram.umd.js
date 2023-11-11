@@ -1,4 +1,4 @@
-/*! guitar-chord-diagram v0.0.1 | (c) 2023 Kia Storm | MIT License | http://github.com/kiastorm/chorducate */
+/*! guitar-chord-diagram v0.0.2 | (c) 2023 Kia Storm | MIT License | http://github.com/kiastorm/chorducate */
 "use strict";
 var GuitarChordDiagram = (() => {
   var __defProp = Object.defineProperty;
@@ -183,7 +183,7 @@ var GuitarChordDiagram = (() => {
   // src/guitar-chord-diagram.ts
   var DEFAULT_STATE = {
     amountOfFrets: 4,
-    frets: [0, 0, 0, 0, 0, 3],
+    frets: [0, 0, 0, 0, 0, 0],
     fingers: [1, 1, 1, 1, 1, 1],
     barres: [],
     capo: false,
