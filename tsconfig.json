@@ -1,0 +1,63 @@
+{
+  "compilerOptions": {
+    /* Base Options: */
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "es2022",
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    /* Strictness */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    /* AND if you're building for a library: */
+    /**
+     *	Tells TypeScript to emit .d.ts files. This is needed so that libraries can
+     *	get autocomplete on the .js files you're creating.
+     */
+    "declaration": true,
+    "outDir": "dist",
+
+    /*
+     *	AND because we're in a monorepo:
+     */
+
+    /**
+     *	`composite` tells TypeScript to emit .tsbuildinfo files. This tells TypeScript that
+     *	your project is part of a monorepo, * and also helps it to cache builds
+     *	to run faster.
+     */
+    "composite": true,
+
+    /**
+     * `sourceMap` and `declarationMap` tell TypeScript to emit source maps and
+     * declaration maps. These are needed so * that when consumers of your
+     * libraries are debugging, they can jump to the original source code using
+     * go-to-definition.
+     */
+    "sourceMap": true,
+    "declarationMap": true,
+
+    /* If NOT transpiling with TypeScript: */
+
+    /**
+     * `Bundler` is the best option for if the code you're writing is meant to be
+     * bundled with a tool like Rollup.
+     */
+    "moduleResolution": "Bundler",
+    /**
+     *	`ESNext` is the best option because it most closely mimics how bundlers
+     *	treat modules.
+     */
+    "module": "ESNext",
+    "noEmit": true,
+
+    /**
+     *	Tells TypeScript what built-in types to include. `es2022` is the best option
+     *	for stability. `dom` and `dom.iterable` give you types for window, document
+     * etc.
+     */
+    "lib": ["es2022", "dom", "dom.iterable"]
+  }
+}

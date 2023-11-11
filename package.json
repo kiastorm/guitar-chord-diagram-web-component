@@ -1,0 +1,36 @@
+{
+  "name": "@chorducate/guitar-chord-diagram-wc",
+  "version": "0.0.1",
+  "description": "An interactive guitar chord diagram web component.",
+  "main": "./dist/guitar-chord-diagram.cjs.min.js",
+  "module": "./dist/guitar-chord-diagram.es.min.js",
+  "browser": {
+    "guitar-chord-diagram-es": "./dist/guitar-chord-diagram.es.min.js",
+    "guitar-chord-diagram-iife": "./dist/guitar-chord-diagram.min.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "author": {
+    "name": "Kia Storm",
+    "url": "http://kormsen.com",
+    "email": "kia@kormsen.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/kiastorm/chorducate"
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "voila": "tsx build.ts",
+    "dev": "tsx build.ts --watch",
+    "build": "npm run clean && npm run voila"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.0",
+    "esbuild": "0.19.5",
+    "tsx": "^4.1.0",
+    "typescript": "^5.2.2"
+  }
+}
