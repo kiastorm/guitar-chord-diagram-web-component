@@ -1,12 +1,8 @@
 # Guitar Chord Diagram Web Component
 
-This project is currently in pre-alpha. Use at your own discretion.
-
-Guitar Chord Diagram (GCD) is a web component for rendering interactive guitar chord diagrams.
+A web component for rendering interactive guitar chord diagrams.
 
 ## Features
-
-(Some of these features are not implemented yet, but are planned)
 
 - Render guitar chord diagrams in the browser as SVG
 - Can be interactive or static.
@@ -14,21 +10,6 @@ Guitar Chord Diagram (GCD) is a web component for rendering interactive guitar c
 - Supports capo and barre chords
 - Render any chord in any tuning
 - Supports finger numbers
-- Supports custom fonts\*
-- Supports custom sizes\*
-- Supports custom colors\*
-- Supports up to 24 frets\*
-- Supports up to 12 strings\*
-- Show strumming pattern\*
-- "Scale mode" renders the entire fretboard and allows unlimited finger dots\*
-- Show note names on the fretboard\*
-- Show scale degrees on the fretboard\*
-- Show intervals on the fretboard\*
-- Get MIDI data\*
-- Get audio output\*
-- Get tablature notation\*
-- Get chord name suggestions\*
-- Get chord variations\*
 
 ## Installation
 
@@ -61,8 +42,3 @@ They are reflected as attributes on the DOM element, so you can set them like th
   tuning="['E', 'A', 'D', 'G', 'B', 'E']"
 ></guitar-chord-diagram>
 ```
-
-## Contributing
-
-Pull requests are welcome. The project aims to be minimal and only use dependencies when absolutely necessary. For major changes, please open an issue
-first to discuss what you would like to change.
